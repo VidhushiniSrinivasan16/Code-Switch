@@ -1,9 +1,8 @@
 # Bilingualism: Language & Cognition
 Bilingual Code Switching in Tweets (Paris & Irma dataset)
 
-**Two large datasets made available**
+**Datasets**
 ```
-Due to Twitter's restrictions, we are only able to share the tweet ID's
 1. **Paris Novemer Attack** 
 2. **Irma Hurricane Dataset** 
 ```
