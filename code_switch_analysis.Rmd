@@ -1,0 +1,133 @@
+```{r}
+options(stringsAsFactors = FALSE)
+Sys.setlocale(category = "LC_ALL", locale = "en_US.UTF-8")
+```
+
+```{r}
+#rm(data,data_non_solidarity,data_solidarity,emDict_raw)
+#rm(list = ls()) 
+#install.packages("slam")
+library(slam)
+library(textcat)
+#library(cldr)
+library(entropart)
+library(boot)
+library(vegan)
+library(simboot)
+#update.packages()
+library(tidyverse)
+#library(tokenizers)
+library(mgcv)
+library(twitteR)
+library(plyr)
+library(dplyr)
+library(ROAuth)
+library(stringr)
+library(ggplot2)
+library(httr)
+library(wordcloud)
+library(stringi)
+#library(sentiment)
+library(SnowballC)
+library(tm)
+library(RColorBrewer)
+```
+
+```{r}
+#setwd("/Users/vsriniv6/Documents/paris_data")
+#folder <- "/Users/vsriniv6/Documents/paris_data/Irma/"      # path to folder that holds multiple .csv files
+folder <- "./Irma/"
+file_list <- list.files(path=folder, pattern="*.csv") # create list of all .csv files in folder
+
+# read in each .csv file in file_list and rbind them into a data frame called data_irma 
+data_irma <- 
+  do.call("rbind", 
+          lapply(file_list, 
+                 function(x) 
+                 read.csv(paste(folder, x, sep=''), 
+                 stringsAsFactors = FALSE, fileEncoding = "UTF-8")))
+
+names(data_irma)
+```
+
+```{r}
+biling_id= read.csv2(file="biling_restrict_new.csv", header=TRUE, sep=",", stringsAsFactors = FALSE, fileEncoding = "UTF-8")
+names(biling_id)
+```
+
+```{r}
+biling_id_40_60 <-subset(biling_id,ENG_PROD>=0.40 & ENG_PROD<=0.60 )
+biling_id_30_70 <-subset(biling_id,ENG_PROD>=0.30 & ENG_PROD<=0.70 )
+biling_id_40_60_sp <-subset(biling_id,SPAN_PROD>=0.40 & SPAN_PROD<=0.60 )
+biling_id_30_70_sp <-subset(biling_id,SPAN_PROD>=0.30 & SPAN_PROD<=0.70 )
+```
+
+```{r}
+names(biling_id_30_70)
+```
+
+
+```{r}
+data_en_1 <- unique(subset(data_irma,lang=="en" & user_id_str %in% biling_id_40_60$user_id)%>%dplyr::filter(!str_detect(text,"(RT|via)((?:\\b\\W*@\\w+)+)")))
+data_en_2 <- unique(subset(data_irma,lang=="en" & user_id_str %in% biling_id_30_70$user_id)%>%dplyr::filter(!str_detect(text,"(RT|via)((?:\\b\\W*@\\w+)+)")))
+data_sp_1 <- unique(subset(data_irma,lang=="es" & user_id_str %in% biling_id_40_60_sp$user_id)%>%dplyr::filter(!str_detect(text,"(RT|via)((?:\\b\\W*@\\w+)+)")))
+data_sp_2 <- unique(subset(data_irma,lang=="es" & user_id_str %in% biling_id_30_70_sp$user_id)%>%dplyr::filter(!str_detect(text,"(RT|via)((?:\\b\\W*@\\w+)+)")))
+
+nrow(data_en_1)
+```
+```{r}
+dyn.load('/Library/Frameworks/R.framework/Versions/3.5/Resources/library/rJava/libs/rJava.so')
+require(rJava)
+```
+```{r}
+library(openxlsx)
+#install.packages(c("readxl","writexl")) 
+```
+
+```{r}
+#require(rJava)
+#library(xlsx) #load the package
+
+write_xlsx(x = data_en_1, file = "biling_code_switch.xlsx",
+        sheetName = "en_40-60", row.names = FALSE)
+write_xlsx(x = data_en_2, file = "biling_code_switch.xlsx",
+        sheetName = "en_30-70", row.names = FALSE)
+write_xlsx(x = data_sp_1, file = "biling_code_switch.xlsx",
+        sheetName = "sp_40-60", row.names = FALSE)
+write_xlsx(x = data_sp_2, file = "biling_code_switch.xlsx",
+        sheetName = "sp_30-70", row.names = FALSE)
+```
+```{r}
+names(data_en_1)
+```
+
+```{r}
+write.csv(data_en_1,"biling_en_40-60.csv")
+write.csv(data_en_2,"biling_en_30-70.csv")
+write.csv(data_sp_1,"biling_sp_40-60.csv")
+write.csv(data_sp_2,"biling_sp_30-70.csv")
+```
+
+
+```{r}
+# Create a blank workbook
+data <- createWorkbook()
+
+# Add some sheets to the workbook
+sheet1=createSheet(data, "en_40-60")
+sheet2=createSheet(data, "en_30-70")
+sheet3=createSheet(data, "sp_40-60")
+sheet4=createSheet(data, "sp_30-70")
+
+# Write the data to the sheets
+addDataFrame(data_en_1, sheet=sheet1, startColumn=7, row.names=FALSE)
+addDataFrame(data_en_1, sheet=sheet1, startColumn=3, row.names=FALSE)
+addDataFrame(data_en_2, sheet=sheet2, startColumn=7, row.names=FALSE)
+addDataFrame(data_en_2, sheet=sheet2, startColumn=3, row.names=FALSE)
+addDataFrame(data_sp_1, sheet=sheet3, startColumn=7, row.names=FALSE)
+addDataFrame(data_sp_1, sheet=sheet3, startColumn=3, row.names=FALSE)
+addDataFrame(data_sp_2, sheet=sheet4, startColumn=7, row.names=FALSE)
+addDataFrame(data_sp_2, sheet=sheet4, startColumn=3, row.names=FALSE)
+# Export the file
+saveWorkbook(data, "biling_code_switch.xlsx")
+```

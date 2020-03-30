@@ -1,0 +1,332 @@
+```{r}
+options(stringsAsFactors = FALSE)
+Sys.setlocale(category = "LC_ALL", locale = "en_US.UTF-8")
+```
+
+```{r}
+#install.packages("slam")
+library(slam)
+#rm(list = ls()) 
+library(textcat)
+#library(cldr)
+library(entropart)
+library(boot)
+library(vegan)
+library(simboot)
+#update.packages()
+library(tidyverse)
+#library(tokenizers)
+library(mgcv)
+library(twitteR)
+library(plyr)
+library(dplyr)
+library(ROAuth)
+library(stringr)
+library(ggplot2)
+library(httr)
+library(wordcloud)
+library(stringi)
+#library(sentiment)
+library(SnowballC)
+library(tm)
+library(RColorBrewer)
+```
+
+
+
+
+```{r}
+setwd("/users/vsriniv6/Documents/Backup_NLP/R_scripts")
+biling_full= read.csv2(file="biling_lang_prior_Bylen.csv", header=TRUE, sep=",", stringsAsFactors = FALSE, fileEncoding = "UTF-8")
+
+names(biling_full)
+```
+
+
+```{r}
+eng_to_span= subset(biling_full,current_lang == "es" & immediate_prior_lang == "en")
+eng_to_span_user_id=unique(eng_to_span$user_id)
+length(eng_to_span_user_id)
+```
+
+```{r}
+tweets_en_sp= subset(data_new_Irma,user_id_str %in% eng_to_span_user_id)
+tweets<-data.frame(tweets_en_sp$text,tweets_en_sp$lang)
+#write.csv(tweets,"english_to_spanish_biling.csv")
+```
+
+```{r}
+tweets_en_1<-subset(tweets_en_sp,lang=="en")
+```
+
+```{r}
+docs <- Corpus(VectorSource(tweets_en_1$text))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+##convert text to lowercase
+#docs <- tm_map(docs,tolower)
+#docs <- iconv(docs, "latin1", "ASCII", sub="")
+# Convert the text to lower case
+#docs <- tm_map(docs, content_transformer(tolower))
+
+#remove url from text
+removeURL <- function(x) gsub("http[[:alnum:]]*",'',x)
+docs <- tm_map(docs,content_transformer(removeURL))
+#inspect(cleaned_corpus[1:5])
+
+##remove emoticons
+removeEmoticons <- function(x) gsub("(?::|;|=)(?:-)?(?:\\)|\\(|D|P)",'',x)
+docs <- tm_map(docs,content_transformer(removeEmoticons))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+```
+
+
+```{r}
+dtm <- TermDocumentMatrix(docs)
+#m <- as.matrix(dtm)
+v <- sort(slam::row_sums(dtm, na.rm = T),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+```{r}
+write.csv(d,"expt1.csv")
+```
+
+```{r}
+set.seed(1234)
+#png("english_tweets_english_to_spanish.png")
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+##Spa
+
+```{r}
+tweets_en_2<-subset(tweets_en_sp,lang=="es")
+```
+
+```{r}
+docs <- Corpus(VectorSource(tweets_en_2$text))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+##convert text to lowercase
+#docs <- tm_map(docs,tolower)
+#docs <- iconv(docs, "latin1", "ASCII", sub="")
+# Convert the text to lower case
+#docs <- tm_map(docs, content_transformer(tolower))
+
+#remove url from text
+removeURL <- function(x) gsub("http[[:alnum:]]*",'',x)
+docs <- tm_map(docs,content_transformer(removeURL))
+#inspect(cleaned_corpus[1:5])
+
+##remove emoticons
+removeEmoticons <- function(x) gsub("(?::|;|=)(?:-)?(?:\\)|\\(|D|P)",'',x)
+docs <- tm_map(docs,content_transformer(removeEmoticons))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+```
+
+
+```{r}
+dtm <- TermDocumentMatrix(docs)
+#m <- as.matrix(dtm)
+v <- sort(slam::row_sums(dtm, na.rm = T),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+```{r}
+write.csv(d,"expt2.csv")
+```
+
+```{r}
+set.seed(1234)
+#png("english_tweets_english_to_spanish.png")
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+##Spanish to English
+
+
+
+```{r}
+span_to_eng= subset(biling_full,current_lang == "en" & immediate_prior_lang == "es")
+span_to_eng_user_id=unique(span_to_eng$user_id)
+length(span_to_eng_user_id)
+```
+
+```{r}
+tweets_sp_en= subset(data_new_Irma,user_id_str %in% span_to_eng_user_id)
+tweets_sp<-data.frame(tweets_sp_en$text,tweets_sp_en$lang)
+#write.csv(tweets_sp,"spanish_to_english_biling.csv")
+```
+
+
+##Spa
+```{r}
+tweets_en_3<-subset(tweets_sp_en,lang=="es")
+```
+
+```{r}
+docs <- Corpus(VectorSource(tweets_en_3$text))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+##convert text to lowercase
+#docs <- tm_map(docs,tolower)
+#docs <- iconv(docs, "latin1", "ASCII", sub="")
+# Convert the text to lower case
+#docs <- tm_map(docs, content_transformer(tolower))
+
+#remove url from text
+removeURL <- function(x) gsub("http[[:alnum:]]*",'',x)
+docs <- tm_map(docs,content_transformer(removeURL))
+#inspect(cleaned_corpus[1:5])
+
+##remove emoticons
+removeEmoticons <- function(x) gsub("(?::|;|=)(?:-)?(?:\\)|\\(|D|P)",'',x)
+docs <- tm_map(docs,content_transformer(removeEmoticons))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+```
+
+
+```{r}
+dtm <- TermDocumentMatrix(docs)
+#m <- as.matrix(dtm)
+v <- sort(slam::row_sums(dtm, na.rm = T),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+```{r}
+write.csv(d,"expt3.csv")
+```
+
+```{r}
+set.seed(1234)
+#png("english_tweets_english_to_spanish.png")
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+##Eng
+
+```{r}
+tweets_en_4<-subset(tweets_sp_en,lang=="en")
+```
+
+```{r}
+docs <- Corpus(VectorSource(tweets_en_4$text))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+##convert text to lowercase
+#docs <- tm_map(docs,tolower)
+#docs <- iconv(docs, "latin1", "ASCII", sub="")
+# Convert the text to lower case
+#docs <- tm_map(docs, content_transformer(tolower))
+
+#remove url from text
+removeURL <- function(x) gsub("http[[:alnum:]]*",'',x)
+docs <- tm_map(docs,content_transformer(removeURL))
+#inspect(cleaned_corpus[1:5])
+
+##remove emoticons
+removeEmoticons <- function(x) gsub("(?::|;|=)(?:-)?(?:\\)|\\(|D|P)",'',x)
+docs <- tm_map(docs,content_transformer(removeEmoticons))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+```
+
+
+```{r}
+dtm <- TermDocumentMatrix(docs)
+#m <- as.matrix(dtm)
+v <- sort(slam::row_sums(dtm, na.rm = T),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+```{r}
+write.csv(d,"expt4.csv")
+```
+
+```{r}
+set.seed(1234)
+#png("english_tweets_english_to_spanish.png")
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
